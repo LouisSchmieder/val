@@ -4,19 +4,20 @@ import os
 import encoding.binary
 
 struct Archive {
+	compress bool
 	out     string
 	entries []string
 	data    []string
 }
 
-pub fn create_from_path(path string, out string, recursive bool) Archive {
+pub fn create_from_path(path string, out string, recursive bool, compress bool) Archive {
 	entries, data := get_entries_from_path(path, recursive, true, '')
-	return create_archive(out, entries, data)
+	return create_archive(out, entries, data, compress)
 }
 
-pub fn create_from_file(path string) Archive {
+pub fn create_from_file(path string, compress bool) Archive {
 	tmp := os.read_file(path) or { '' }
-	data := tmp.bytes()
+	mut data := tmp.bytes()
 	mut i := 0
 	mut entries := []string{}
 	mut d := []string{}
@@ -27,10 +28,16 @@ pub fn create_from_file(path string) Archive {
 		i += path_len
 		data_len := int(binary.big_endian_u32(data[i..i + 4]))
 		i += 4
-		d << data[i..i + data_len].bytestr()
+		if compress {
+			mut obj := create_decompress_object(data[i..i + data_len])
+			obj.decompress()
+			d << obj.to_string()
+		} else {
+			d << data[i..i + data_len].bytestr()
+		}
 		i += data_len
 	}
-	return create_archive(path, entries, d)
+	return create_archive(path, entries, d, compress)
 }
 
 fn get_entries_from_path(path string, r bool, a bool, upper string) ([]string, []string) {
@@ -63,8 +70,9 @@ fn get_entries_from_path(path string, r bool, a bool, upper string) ([]string, [
 	return entries, data
 }
 
-fn create_archive(out string, entries []string, data []string) Archive {
+fn create_archive(out string, entries []string, data []string, compress bool) Archive {
 	return Archive{
+		compress: compress
 		out: out
 		entries: entries
 		data: data
@@ -79,10 +87,15 @@ pub fn (archive Archive) make_file() {
 		binary.big_endian_put_u32(mut tmp, u32(entry.len))
 		output << tmp
 		output << entry.bytes()
-		data := archive.data[i]
+		mut data := archive.data[i].bytes()
+		if archive.compress {
+			mut obj := create_compress_object(data.bytestr())
+			obj.compress()
+			data = obj.to_buffer()
+		}
 		binary.big_endian_put_u32(mut tmp, u32(data.len))
 		output << tmp
-		output << data.bytes()
+		output << data
 	}
 	os.write_file(archive.out, output.bytestr()) or { panic(err) }
 }

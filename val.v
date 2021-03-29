@@ -14,6 +14,7 @@ fn main() {
 	mut path := ''
 	mut out := ''
 	mut extr := false
+	mut compress := false
 
 	for i := 0; i < args.len; i++ {
 		arg := args[i]
@@ -23,6 +24,9 @@ fn main() {
 			}
 			'-e' {
 				extr = true
+			}
+			'-c' {
+				compress = true
 			}
 			'-p' {
 				path = args[i + 1]
@@ -40,17 +44,18 @@ fn main() {
 		}
 	}
 	if extr {
-		arch := create_from_file(path)
+		arch := create_from_file(path, compress)
 		arch.make_orginial(out)
 	} else {
-		arch := create_from_path(path, out, rec)
+		arch := create_from_path(path, out, rec, compress)
 		arch.make_file()
 	}
 }
 
 fn print_help() {
 	eprintln('Usage:')
-	eprintln('val [(-r)/-e] -p <input path depends on action> -o <output path depends on action>')
+	eprintln('val [(-r)/-e] -c -p <input path depends on action> -o <output path depends on action>')
+	eprintln('  -c      Compression enabled (Optional)')
 	eprintln('  -r      Activates recursion for archiving (Optional)')
 	eprintln('  -e      If set action is set to extraction, if not set action is archiving')
 }
