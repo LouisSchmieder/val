@@ -2,6 +2,7 @@ module main
 
 import os
 import encoding.binary
+import compress as compression
 
 struct Archive {
 	compress bool
@@ -29,7 +30,7 @@ pub fn create_from_file(path string, compress bool) Archive {
 		data_len := int(binary.big_endian_u32(data[i..i + 4]))
 		i += 4
 		if compress {
-			mut obj := create_decompress_object(data[i..i + data_len])
+			mut obj := compression.create_decompress_object(data[i..i + data_len])
 			obj.decompress()
 			d << obj.to_string()
 		} else {
@@ -89,7 +90,7 @@ pub fn (archive Archive) make_file() {
 		output << entry.bytes()
 		mut data := archive.data[i].bytes()
 		if archive.compress {
-			mut obj := create_compress_object(data.bytestr())
+			mut obj := compression.create_compress_object(data.bytestr())
 			obj.compress()
 			data = obj.to_buffer()
 		}
